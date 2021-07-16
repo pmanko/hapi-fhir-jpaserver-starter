@@ -6,6 +6,10 @@ spring:
     password: null
     driverClassName: org.h2.Driver
     max-active: 15
+
+    # database connection pool size
+    hikari:
+      maximum-pool-size: 10
   jpa:
     properties:
       hibernate.format_sql: false
@@ -40,6 +44,7 @@ hapi:
 ### enable to set the Server URL
 #    server_address: http://hapi.fhir.org/baseR4
 #    defer_indexing_for_codesystems_of_size: 101
+#    install_transitive_ig_dependencies: true
 #    implementationguides:
 ###    example from registry (packages.fhir.org)
 #      swiss:
@@ -58,7 +63,6 @@ hapi:
 #    allow_external_references: true
 #    allow_multiple_delete: true
 #    allow_override_default_search_params: true
-#    allow_placeholder_references: true
 #    auto_create_placeholder_reference_targets: false
 #    cql_enabled: true
 #    default_encoding: JSON
@@ -66,6 +70,7 @@ hapi:
 #    default_page_size: 20
 #    enable_repository_validating_interceptor: false
 #    enable_index_missing_fields: false
+#    enable_index_contained_resource: false
 #    enforce_referential_integrity_on_delete: false
 #    enforce_referential_integrity_on_write: false
 #    etag_support_enabled: true
@@ -76,6 +81,7 @@ hapi:
 #    filter_search_enabled: true
 #    graphql_enabled: true
 #    narrative_enabled: true
+#    mdm_enabled: true
 #    partitioning:
 #      allow_references_across_partitions: false
 #      partitioning_include_in_search_hashes: false
@@ -84,6 +90,12 @@ hapi:
       # These are allowed_origin patterns, see: https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/web/cors/CorsConfiguration.html#setAllowedOriginPatterns-java.util.List-
       allowed_origin:
         - '*'
+
+    # Search coordinator thread pool sizes
+    search-coord-core-pool-size: 20
+    search-coord-max-pool-size: 100
+    search-coord-queue-capacity: 200
+
 #    logger:
 #      error_format: 'ERROR - ${requestVerb} ${requestUrl}'
 #      format: >-
@@ -114,7 +126,7 @@ hapi:
 #    binary_storage_enabled: true
 #    bulk_export_enabled: true
 #    subscription:
-#      resthook_enabled: false
+#      resthook_enabled: true
 #      websocket_enabled: false
 #      email:
 #        from: some@test.com
