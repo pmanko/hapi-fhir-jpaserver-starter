@@ -1,6 +1,6 @@
 # HAPI FHIR JPA Server Starter Helm Chart
 
-![Version: 0.6.0](https://img.shields.io/badge/Version-0.6.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v5.5.1](https://img.shields.io/badge/AppVersion-v5.5.1-informational?style=flat-square)
+![Version: 0.25.0](https://img.shields.io/badge/Version-0.25.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 8.8.0](https://img.shields.io/badge/AppVersion-8.8.0-informational?style=flat-square)
 
 This helm chart will help you install the HAPI FHIR JPA Server in a Kubernetes environment.
 
@@ -8,14 +8,26 @@ This helm chart will help you install the HAPI FHIR JPA Server in a Kubernetes e
 
 ```sh
 helm repo add hapifhir https://hapifhir.github.io/hapi-fhir-jpaserver-starter/
-helm install --render-subchart-notes hapi-fhir-jpaserver hapifhir/hapi-fhir-jpaserver
+helm install hapi-fhir-jpaserver hapifhir/hapi-fhir-jpaserver
 ```
+
+## Requirements
+
+| Repository | Name | Version |
+|------------|------|---------|
+| oci://registry-1.docker.io/cloudpirates | postgres | 0.19.3 |
 
 ## Values
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | affinity | object | `{}` | pod affinity |
+| autoscaling | object | `{"enabled":false,"maxReplicas":10,"minReplicas":1,"targetCPU":60,"targetMemory":60}` | Autoscaling, dynamic number of instances based on metrics |
+| autoscaling.enabled | bool | `false` | enables the use of the autoscaling policy |
+| autoscaling.maxReplicas | int | `10` | maximum number of instances (even is metrics are high, no scaling is done after this point) |
+| autoscaling.minReplicas | int | `1` | minimum number of instances |
+| autoscaling.targetCPU | int | `60` | Average CPU utilisation targetted by autoscaling |
+| autoscaling.targetMemory | int | `60` | Average memory utilisation targetted by autoscaling |
 | deploymentAnnotations | object | `{}` | annotations applied to the server deployment |
 | externalDatabase.database | string | `"fhir"` | database name |
 | externalDatabase.existingSecret | string | `""` | name of an existing secret resource containing the DB password in the `existingSecretKey` key |
@@ -24,12 +36,16 @@ helm install --render-subchart-notes hapi-fhir-jpaserver hapifhir/hapi-fhir-jpas
 | externalDatabase.password | string | `""` | database password |
 | externalDatabase.port | int | `5432` | database port number |
 | externalDatabase.user | string | `"fhir"` | username for the external database |
+| extraConfig | string | `""` | additional Spring Boot application config. Mounted as a file and automatically loaded by the application. |
+| extraEnv | list | `[]` | extra environment variables to set on the server container |
+| extraInitContainers | list | `[]` | Optionally specify extra init containers |
+| extraVolumeMounts | list | `[]` | Optionally specify extra list of additional volumeMounts |
+| extraVolumes | list | `[]` | Optionally specify extra list of additional volumes |
 | fullnameOverride | string | `""` | override the chart fullname |
-| image.flavor | string | `"distroless"` | the flavor or variant of the image to use. appended to the image tag by `-`. |
-| image.pullPolicy | string | `"IfNotPresent"` |  |
-| image.registry | string | `"docker.io"` |  |
-| image.repository | string | `"hapiproject/hapi"` |  |
-| image.tag | string | `""` | defaults to `Chart.appVersion` |
+| image.pullPolicy | string | `"IfNotPresent"` | image pullPolicy to use |
+| image.registry | string | `"docker.io"` | registry where the HAPI FHIR server image is hosted |
+| image.repository | string | `"hapiproject/hapi"` | the path inside the repository |
+| image.tag | string | `"v8.8.0-1@sha256:34c86fd5805df77c2b9d9c10538050b16ac3dc244352da0ebe4717f931330775"` | the image tag. As of v5.7.0, this is the `distroless` flavor by default, add `-tomcat` to use the Tomcat-based image. |
 | imagePullSecrets | list | `[]` | image pull secrets to use when pulling the image |
 | ingress.annotations | object | `{}` | provide any additional annotations which may be required. Evaluated as a template. |
 | ingress.enabled | bool | `false` | whether to create an Ingress to expose the FHIR server HTTP endpoint |
@@ -37,38 +53,106 @@ helm install --render-subchart-notes hapi-fhir-jpaserver hapifhir/hapi-fhir-jpas
 | ingress.hosts[0].pathType | string | `"ImplementationSpecific"` |  |
 | ingress.hosts[0].paths[0] | string | `"/"` |  |
 | ingress.tls | list | `[]` | ingress TLS config |
+| initContainers | object | `{"resources":{},"resourcesPreset":"nano"}` | Configures the default init container (which waits for the database to be ready) |
+| initContainers.resources | object | `{}` | configure the init containers pods resource requests and limits |
+| initContainers.resourcesPreset | string | `"nano"` | set container resources according to one common preset (allowed values: none, nano, micro, small, medium, large, xlarge, 2xlarge). This is ignored if `resources` is set (`resources` is recommended for production). |
+| metrics.service.port | int | `8081` |  |
+| metrics.serviceMonitor.additionalLabels | object | `{}` | additional labels to apply to the ServiceMonitor object, e.g. `release: prometheus` |
+| metrics.serviceMonitor.enabled | bool | `false` | if enabled, creates a ServiceMonitor instance for Prometheus Operator-based monitoring |
 | nameOverride | string | `""` | override the chart name |
-| networkPolicy.allowedFrom | list | `[]` | Additional allowed NetworkPolicyPeer specs Evaluated as a template so you could do: Example: allowedFrom:   - podSelector:       matchLabels:         app.kubernetes.io/name: {{ $.Release.Name }} |
-| networkPolicy.enabled | bool | `false` | enable NetworkPolicy |
-| networkPolicy.explicitNamespacesSelector | object | `{}` | a Kubernetes LabelSelector to explicitly select namespaces from which ingress traffic could be allowed |
 | nodeSelector | object | `{}` | node selector for the pod |
 | podAnnotations | object | `{}` | annotations applied to the server pod |
-| podSecurityContext | object | `{}` | pod security context |
-| postgresql.containerSecurityContext.allowPrivilegeEscalation | bool | `false` |  |
-| postgresql.containerSecurityContext.capabilities.drop[0] | string | `"ALL"` |  |
-| postgresql.enabled | bool | `true` | enable an included PostgreSQL DB. see <https://github.com/bitnami/charts/tree/master/bitnami/postgresql> for details if set to `false`, the values under `externalDatabase` are used |
-| postgresql.existingSecret | string | `""` | Name of existing secret to use for PostgreSQL passwords. The secret has to contain the keys `postgresql-password` which is the password for `postgresqlUsername` when it is different of `postgres`, `postgresql-postgres-password` which will override `postgresqlPassword`, `postgresql-replication-password` which will override `replication.password` and `postgresql-ldap-password` which will be sed to authenticate on LDAP. The value is evaluated as a template. |
-| postgresql.postgresqlDatabase | string | `"fhir"` | name of the database to create see: <https://github.com/bitnami/bitnami-docker-postgresql/blob/master/README.md#creating-a-database-on-first-run> |
-| readinessProbe.failureThreshold | int | `5` |  |
-| readinessProbe.initialDelaySeconds | int | `30` |  |
-| readinessProbe.periodSeconds | int | `20` |  |
-| readinessProbe.successThreshold | int | `1` |  |
-| readinessProbe.timeoutSeconds | int | `20` |  |
-| replicaCount | int | `1` | number of replicas to deploy |
+| podDisruptionBudget.enabled | bool | `false` | Enable PodDisruptionBudget for the server pods. uses policy/v1/PodDisruptionBudget thus requiring k8s 1.21+ |
+| podDisruptionBudget.maxUnavailable | string | `""` | maximum unavailable instances |
+| podDisruptionBudget.minAvailable | int | `1` | minimum available instances |
+| podSecurityContext | object | `{"fsGroup":65532,"fsGroupChangePolicy":"OnRootMismatch","runAsGroup":65532,"runAsNonRoot":true,"runAsUser":65532,"seccompProfile":{"type":"RuntimeDefault"}}` | pod security context |
+| postgres.auth.database | string | `"fhir"` | name for a custom database to create |
+| postgres.auth.existingSecret | string | `""` | Name of existing secret to use for PostgreSQL credentials `auth.postgresPassword`, `auth.password`, and `auth.replicationPassword` will be ignored and picked up from this secret The secret must contain the keys `postgres-password` (which is the password for "postgres" admin user), `password` (which is the password for the custom user to create when `auth.username` is set), and `replication-password` (which is the password for replication user). The secret might also contains the key `ldap-password` if LDAP is enabled. `ldap.bind_password` will be ignored and picked from this secret in this case. The value is evaluated as a template. |
+| postgres.enabled | bool | `true` | enable an included PostgreSQL DB. see <https://github.com/CloudPirates-io/helm-charts/tree/main/charts/postgres> for details if set to `false`, the values under `externalDatabase` are used |
+| replicaCount | int | `1` | Simple number of replicas, ignored if autoscaling is enabled |
 | resources | object | `{}` | configure the FHIR server's resource requests and limits |
+| resourcesPreset | string | `"medium"` | set container resources according to one common preset (allowed values: none, nano, micro, small, medium, large, xlarge, 2xlarge). This is ignored if `resources` is set (`resources` is recommended for production). |
 | securityContext.allowPrivilegeEscalation | bool | `false` |  |
 | securityContext.capabilities.drop[0] | string | `"ALL"` |  |
+| securityContext.privileged | bool | `false` |  |
 | securityContext.readOnlyRootFilesystem | bool | `true` |  |
+| securityContext.runAsGroup | int | `65532` |  |
 | securityContext.runAsNonRoot | bool | `true` |  |
 | securityContext.runAsUser | int | `65532` |  |
-| service.port | int | `8080` |  |
-| service.type | string | `"ClusterIP"` |  |
-| startupProbe.failureThreshold | int | `10` |  |
-| startupProbe.initialDelaySeconds | int | `60` |  |
-| startupProbe.periodSeconds | int | `30` |  |
-| startupProbe.successThreshold | int | `1` |  |
-| startupProbe.timeoutSeconds | int | `30` |  |
+| securityContext.seccompProfile.type | string | `"RuntimeDefault"` |  |
+| service.port | int | `8080` | port where the server will be exposed at |
+| service.type | string | `"ClusterIP"` | service type |
+| serviceAccount.annotations | object | `{}` | Annotations to add to the service account |
+| serviceAccount.automount | bool | `true` | Automatically mount a ServiceAccount's API credentials? |
+| serviceAccount.create | bool | `false` | Specifies whether a service account should be created. |
+| serviceAccount.name | string | `""` | The name of the service account to use. If not set and create is true, a name is generated using the fullname template |
+| tests.automountServiceAccountToken | bool | `false` | whether the service account token should be auto-mounted for the test pods |
+| tests.resources | object | `{}` | configure the test pods resource requests and limits |
+| tests.resourcesPreset | string | `"nano"` | set container resources according to one common preset (allowed values: none, nano, micro, small, medium, large, xlarge, 2xlarge). This is ignored if `resources` is set (`resources` is recommended for production). |
 | tolerations | list | `[]` | pod tolerations |
+| topologySpreadConstraints | list | `[]` | pod topology spread configuration see: <https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/#api> |
+| waitForDatabaseInitContainer.image | object | `{"pullPolicy":"IfNotPresent","registry":"docker.io","repository":"library/postgres","tag":"18.3@sha256:78481659c47e862334611ccdaf7c369c986b3046da9857112f3b309114a65fb4"}` | image to use for the init container which waits until the database is ready to accept connections |
+
+## Development
+
+To update the Helm chart when a new version of the `hapiproject/hapi` image is released, [values.yaml](values.yaml) `image.tag` and the [Chart.yaml](Chart.yaml)'s
+`version` and optionally the `appVersion` field need to be updated. Afterwards, re-generate the [README.md](README.md)
+by running:
+
+```sh
+$ helm-docs
+INFO[2021-11-20T12:38:04Z] Found Chart directories [charts/hapi-fhir-jpaserver]
+INFO[2021-11-20T12:38:04Z] Generating README Documentation for chart /usr/src/app/charts/hapi-fhir-jpaserver
+```
+
+## Enable Distributed Tracing based on the OpenTelemetry Java Agent
+
+The container image includes the [OpenTelemetry Java agent JAR](https://github.com/open-telemetry/opentelemetry-java-instrumentation)
+which can be used to enable distributed tracing. It can be configured entirely using environment variables,
+see <https://opentelemetry.io/docs/instrumentation/java/automatic/agent-config/> for details.
+
+Here's an example setup deploying [Jaeger](https://www.jaegertracing.io/) as a tracing backend:
+
+```sh
+# required by the Jaeger Operator
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.9.1/cert-manager.yaml
+kubectl create namespace observability
+kubectl create -f https://github.com/jaegertracing/jaeger-operator/releases/download/v1.37.0/jaeger-operator.yaml -n observability
+
+cat <<EOF | kubectl apply -n observability -f -
+# simple, all-in-one Jaeger installation. Not suitable for production use.
+apiVersion: jaegertracing.io/v1
+kind: Jaeger
+metadata:
+  name: simplest
+EOF
+```
+
+Use this chart's `extraEnv` value to set the required environment variables:
+
+```yaml
+extraEnv:
+  - name: JAVA_TOOL_OPTIONS
+    value: "-javaagent:/app/opentelemetry-javaagent.jar"
+  - name: OTEL_METRICS_EXPORTER
+    value: "none"
+  - name: OTEL_LOGS_EXPORTER
+    value: "none"
+  - name: OTEL_TRACES_EXPORTER
+    value: "jaeger"
+  - name: OTEL_SERVICE_NAME
+    value: "hapi-fhir-jpaserver"
+  - name: OTEL_EXPORTER_JAEGER_ENDPOINT
+    value: "http://simplest-collector.observability.svc:14250"
+```
+
+Finally, you can open the Jaeger query UI by running:
+
+```sh
+kubectl port-forward -n observability service/simplest-query 16686:16686
+```
+
+and opening <http://localhost:16686/> in your browser.
 
 ----------------------------------------------
-Autogenerated from chart metadata using [helm-docs v1.5.0](https://github.com/norwoodj/helm-docs/releases/v1.5.0)
+Autogenerated from chart metadata using [helm-docs v1.14.2](https://github.com/norwoodj/helm-docs/releases/v1.14.2)
